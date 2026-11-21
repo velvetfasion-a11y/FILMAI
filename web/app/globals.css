@@ -1,0 +1,17 @@
+:root {
+  --linen: #faf6f0;
+  --card: #fffdf9;
+  --ink: #2a2224;
+  --muted: #8a7f7a;
+  --wine: #7b1e2b;
+  --wine2: #5e1520;
+  --line: #eadfd3;
+  --soft: #f3ebe2;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--linen);
+  color: var(--ink);
+  font-family: Inter, system-ui, sans-serif;
+}
