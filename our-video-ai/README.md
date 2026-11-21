@@ -1,4 +1,4 @@
-# Our Video AI: source code
+# Our Video AI
 
 A self-hosted, OpenArt-style video generator. You type a prompt and can add reference photos. An "AI director" plans the shots, an
 open-source video model films each one, and the app edits them into a single MP4 with cuts or crossfades.
@@ -7,7 +7,7 @@ Everything runs on your own machine using open models from Hugging Face. No API 
 ## What's inside
 | File | What it does |
 |---|---|
-| `app.py` | FastAPI web server: the page, upload handling, a job queue on disk (`outputs/<id>/job.json`), the video and gallery endpoints, and this source-code download |
+| `app.py` | FastAPI web server: the page, upload handling, a job queue on disk (`outputs/<id>/job.json`), the video and gallery endpoints |
 | `render.py` | Renders one video in a separate process: plans the shots, encodes the prompts, generates the scenes, decodes them and stitches them with ffmpeg |
 | `dmd.py` | Small 3-step sampler for the distilled Wan model (predict x0, then re-noise) |
 | `taehv/taehv.py` | Tiny video decoder (TAEHV by madebyollin), ~30x faster than the full Wan VAE on CPU |

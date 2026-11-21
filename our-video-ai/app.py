@@ -115,43 +115,6 @@ def file(jid: str, name: str):
     if not p.exists(): raise HTTPException(404)
     return FileResponse(p)
 
-# ---------- source code download / viewer ----------
-SOURCE_FILES = ["README.md", "app.py", "render.py", "dmd.py", "static/index.html", "static/source.html", "start.sh", "run_loop.sh", "requirements.txt",
-                "taehv/taehv.py", "taehv/LICENSE", ".gitignore"]
-SECRET_RE = re.compile(r"(hf_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9]{20,}|ghp_[A-Za-z0-9]{20,}|gho_[A-Za-z0-9]{20,}|xox[bp]-[A-Za-z0-9-]{10,}|AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY)")
-
-def source_files():
-    out = []
-    for f in SOURCE_FILES:
-        src = ROOT / ("SOURCE_README.md" if f == "README.md" else f)
-        if src.exists():
-            txt = src.read_text(errors="replace")
-            if SECRET_RE.search(txt): raise HTTPException(500, f"Refusing to publish {f}: it looks like it contains a secret")
-            out.append((f, txt))
-    return out
-
-@app.get("/source.zip")
-@app.get("/source-download")
-def source_zip():
-    import io, zipfile
-    buf = io.BytesIO()
-    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
-        for f, txt in source_files():
-            info = zipfile.ZipInfo(f"our-video-ai/{f}", date_time=time.localtime()[:6])
-            info.external_attr = (0o755 if f.endswith(".sh") else 0o644) << 16
-            info.compress_type = zipfile.ZIP_DEFLATED
-            z.writestr(info, txt)
-    from fastapi.responses import Response
-    return Response(buf.getvalue(), media_type="application/zip", headers={"Content-Disposition": 'attachment; filename="our-video-ai-source.zip"', "Cache-Control": "no-store"})
-
-@app.get("/api/source")
-def source_list():
-    return [{"path": f, "lines": t.count("\n") + 1, "code": t} for f, t in source_files()]
-
-@app.get("/source", response_class=HTMLResponse)
-def source_page():
-    return (ROOT / "static" / "source.html").read_text()
-
 @app.get("/", response_class=HTMLResponse)
 def index():
     return (ROOT / "static" / "index.html").read_text()
