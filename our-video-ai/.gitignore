@@ -1,0 +1,11 @@
+.venv/
+hf/
+outputs/
+legacy/
+tunnel/node_modules/
+taehv/*.pth
+*.log
+url.txt
+*.mp4
+*.png
+__pycache__/
