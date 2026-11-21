@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FILMAI — text & image to video</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--linen:#faf6f0;--card:#fffdf9;--ink:#2a2224;--muted:#8a7f7a;--wine:#7b1e2b;--wine2:#5e1520;--line:#eadfd3;--soft:#f3ebe2}
+*{box-sizing:border-box}body{margin:0;background:var(--linen);color:var(--ink);font-family:Inter,system-ui,sans-serif}
+header{display:flex;justify-content:space-between;align-items:center;padding:22px 40px;border-bottom:1px solid var(--line)}
+.logo{font-family:"Cormorant Garamond",serif;font-size:28px;font-weight:600;letter-spacing:.5px}.logo span{color:var(--wine)}
+.tag{font-size:13px;color:var(--muted)}
+main{max-width:1220px;margin:0 auto;padding:36px 24px 80px;display:grid;grid-template-columns:440px 1fr;gap:32px;align-items:start}
+@media(max-width:940px){main{grid-template-columns:1fr}header{padding:18px 20px}.tag{display:none}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:26px;box-shadow:0 10px 30px -18px rgba(90,40,40,.25)}
+h1{font-family:"Cormorant Garamond",serif;font-weight:500;font-size:38px;line-height:1.1;margin:0 0 6px}
+p.sub{color:var(--muted);margin:0 0 18px;font-size:14px;line-height:1.5}
+label{display:block;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:18px 0 8px}
+textarea{width:100%;min-height:120px;resize:vertical;border:1px solid var(--line);border-radius:12px;padding:14px;font:15px/1.5 Inter;background:#fff;color:var(--ink);outline:none}
+textarea:focus,select:focus{border-color:var(--wine)}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+select{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;font:14px Inter;color:var(--ink)}
+.seg{display:flex;gap:6px}.seg button{flex:1;padding:10px 0;border:1px solid var(--line);background:#fff;border-radius:10px;font:600 14px Inter;color:var(--ink);cursor:pointer}
+.seg button.on{background:var(--wine);color:#fff;border-color:var(--wine)}
+.drop{border:1.5px dashed #d9c9b8;border-radius:12px;padding:16px;text-align:center;color:var(--muted);font-size:13px;cursor:pointer;background:#fff;transition:.2s}
+.drop.over,.drop:hover{border-color:var(--wine);color:var(--wine)}
+.thumbs{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.th{position:relative;width:74px;height:74px;border-radius:10px;overflow:hidden;border:1px solid var(--line)}
+.th img{width:100%;height:100%;object-fit:cover}.th b{position:absolute;left:4px;bottom:4px;background:rgba(0,0,0,.55);color:#fff;font-size:10px;padding:1px 5px;border-radius:6px}
+.th i{position:absolute;right:3px;top:3px;background:#fff;color:var(--wine);border-radius:50%;width:18px;height:18px;font:600 12px/18px Inter;text-align:center;cursor:pointer;font-style:normal}
+.toggles{display:flex;flex-direction:column;gap:8px;margin-top:16px;font-size:13px}.toggles label{all:unset;display:flex;gap:8px;align-items:center;cursor:pointer;color:var(--ink)}
+.toggles input{flex:none;accent-color:var(--wine);width:16px;height:16px}.toggles small{color:var(--muted)}
+.est{margin-top:16px;font-size:13px;color:var(--muted);background:var(--soft);border-radius:10px;padding:10px 12px}
+.go{margin-top:14px;width:100%;padding:15px;border:0;border-radius:12px;background:var(--wine);color:#fff;font:600 15px Inter;cursor:pointer;letter-spacing:.02em;transition:.2s}
+.go:hover{background:var(--wine2)}.go:disabled{opacity:.55;cursor:wait}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}.chip{font-size:12px;padding:6px 10px;border:1px solid var(--line);border-radius:999px;cursor:pointer;color:var(--muted);background:#fff}.chip:hover{border-color:var(--wine);color:var(--wine)}
+.stage{display:flex;flex-direction:column;gap:20px}
+.screen{aspect-ratio:16/9;max-height:78vh;margin:0 auto;width:100%;border-radius:18px;background:#efe7dd;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.screen video{width:100%;height:100%;object-fit:contain;background:#1b1617}
+.empty{text-align:center;color:var(--muted);font-size:14px;padding:20px}.empty b{display:block;font-family:"Cormorant Garamond",serif;font-size:26px;color:var(--ink);font-weight:500;margin-bottom:6px}
+.bar{height:6px;background:#eadfd3;border-radius:6px;overflow:hidden;margin-top:12px}.bar i{display:block;height:100%;width:0;background:var(--wine);transition:width .8s}
+.status{font-size:15px;color:var(--ink);display:flex;justify-content:space-between;gap:10px}.status small{color:var(--muted);font-size:13px}
+.scenes{margin:14px 0 0;padding:0;list-style:none;font-size:13px;color:var(--muted)}
+.scenes li{padding:9px 0;border-top:1px dashed var(--line);display:grid;grid-template-columns:86px 1fr;gap:10px}
+.scenes li span.s{font-weight:600;font-size:12px}.s.done{color:#3d7a4a}.s.rendering{color:var(--wine)}
+.actions{display:flex;gap:10px;flex-wrap:wrap}.btn2{padding:10px 16px;border:1px solid var(--wine);color:var(--wine);border-radius:10px;text-decoration:none;font:600 13px Inter;background:#fff;cursor:pointer}
+h3{font-family:"Cormorant Garamond",serif;font-weight:500;font-size:24px;margin:10px 0 12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;cursor:pointer;position:relative}.tile video{width:100%;display:block;aspect-ratio:16/9;object-fit:cover;background:#1b1617}
+.tile .ph{aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;background:var(--soft);color:var(--wine);font-size:13px;font-weight:600}
+.tile div.c{padding:10px 12px;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.note{font-size:12px;color:var(--muted);margin-top:8px}
+footer{text-align:center;color:var(--muted);font-size:12px;padding:0 20px 30px;line-height:1.6}
+</style></head><body>
+<header><div class="logo">Film<span>AI</span></div><div class="tag">Open-source text & image to video · running on our own machine</div></header>
+<main>
+<section class="card">
+  <h1>Describe your film.</h1>
+  <p class="sub">Describe what you want to see — just write it like you would to a filmmaker. Mention things like “vertical for TikTok”, “10 seconds”, “3 shots” or “black and white” and the AI director takes care of it. Add photos and the video starts from them.</p>
+  <label>Prompt</label>
+  <textarea id="prompt" placeholder="A woman in a long red wool coat walks through snowy Gamla Stan at dusk, stops at a glowing café window and smiles."></textarea>
+  <label>Reference images <span style="text-transform:none;letter-spacing:0;font-weight:400">(optional · the video starts from them, one per scene)</span></label>
+  <div class="drop" id="drop">Drop photos here or <u>browse</u><input type="file" id="file" accept="image/*" multiple hidden></div>
+  <div class="thumbs" id="thumbs"></div>
+  <button class="go" id="go">Generate video</button>
+  <div class="note">You can close this page — your videos keep rendering and wait for you under “My videos”.</div>
+</section>
+<section class="stage">
+  <div class="screen" id="screen"><div class="empty"><b>Your video appears here</b>Each scene takes a few minutes — this AI runs on our own computer.</div></div>
+  <div class="card" id="statusCard" style="display:none">
+    <div class="status"><div id="status"></div><small id="eta"></small></div><div class="bar"><i id="bar"></i></div>
+    <div id="plan" style="font-size:13px;color:var(--wine);margin-top:10px"></div><ul class="scenes" id="sceneList"></ul>
+    <div class="actions" id="actions" style="margin-top:14px;display:none"><a class="btn2" id="dl" href="#">Download MP4</a><a class="btn2" id="open" target="_blank" href="#">Open in new tab</a><button class="btn2" id="reuse">Use this prompt again</button></div>
+  </div>
+  <div><h3>My videos</h3><div class="grid" id="mine"></div></div>
+  <div><h3>Recent creations</h3><div class="grid" id="gallery"></div></div>
+</section>
+</main>
+<footer>Video model: FastWan2.2-TI2V-5B (Wan 2.2, distilled by FastVideo) · decoder: TAEHV · AI director: Qwen2.5-3B-Instruct (decides scenes, format, length and editing from your prompt) — all open-source from Hugging Face, running locally. One video renders at a time; others wait in the queue.</footer>
+<script>
+const $=id=>document.getElementById(id);let files=[],current=null,timer=null;
+const fmt=s=>{s=Math.max(0,Math.round(s));if(s<60)return s+' s';const m=Math.round(s/60);return m<60?m+' min':Math.floor(m/60)+' h '+(m%60)+' min'};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function renderThumbs(){$('thumbs').innerHTML=files.map((f,i)=>`<div class="th"><img src="${URL.createObjectURL(f)}"><b>Scene ${i+1}</b><i data-i="${i}">×</i></div>`).join('');
+ document.querySelectorAll('.th i').forEach(x=>x.onclick=()=>{files.splice(+x.dataset.i,1);renderThumbs()});
+}
+function addFiles(fl){for(const f of fl){if(f.type.startsWith('image/')&&files.length<6)files.push(f)}renderThumbs()}
+$('drop').onclick=()=>$('file').click();$('file').onchange=e=>{addFiles(e.target.files);e.target.value=''};
+$('drop').ondragover=e=>{e.preventDefault();$('drop').classList.add('over')};$('drop').ondragleave=()=>$('drop').classList.remove('over');
+$('drop').ondrop=e=>{e.preventDefault();$('drop').classList.remove('over');addFiles(e.dataTransfer.files)};
+const mine=()=>JSON.parse(localStorage.getItem('ova_jobs')||'[]');
+const addMine=id=>{const m=mine().filter(x=>x!==id);m.unshift(id);localStorage.setItem('ova_jobs',JSON.stringify(m.slice(0,40)))};
+function show(v){$('screen').innerHTML=`<video src="${v}" controls autoplay loop playsinline></video>`}
+function tiles(items,el,emptyTxt){el.innerHTML=items.map(i=>i.video?`<div class="tile" data-id="${i.id}"><video src="${i.video}#t=0.5" muted preload="metadata" loop></video><div class="c" title="${esc(i.prompt)}">${esc(i.prompt)}</div></div>`
+ :`<div class="tile" data-id="${i.id}"><div class="ph">${i.status==='error'?'Failed':i.status==='queued'?'In queue':'Rendering · '+Math.round(i.progress*100)+'%'}</div><div class="c">${esc(i.prompt)}</div></div>`).join('')||`<div style="grid-column:1/-1;color:#8a7f7a;font-size:13px">${emptyTxt}</div>`;
+ el.querySelectorAll('.tile').forEach(t=>{t.onclick=()=>track(t.dataset.id);const v=t.querySelector('video');if(v){t.onmouseenter=()=>v.play();t.onmouseleave=()=>v.pause()}})}
+async function refreshLists(){
+ try{
+  const m=mine();
+  if(m.length){const r=await fetch('api/gallery?ids='+m.join(','));if(!r.ok)throw 0;tiles(await r.json(),$('mine'),'')}
+  else $('mine').innerHTML='<div style="grid-column:1/-1;color:#8a7f7a;font-size:13px">Videos you make on this device show up here.</div>';
+  const g=await fetch('api/gallery');if(!g.ok)throw 0;tiles(await g.json(),$('gallery'),'Nothing yet — be the first.')
+ }catch(e){
+  if(!mine().length)$('mine').innerHTML='<div style="grid-column:1/-1;color:#8a7f7a;font-size:13px">Videos you make on this device show up here.</div>';
+  $('gallery').innerHTML='<div style="grid-column:1/-1;color:#8a7f7a;font-size:13px">Connect the FILMAI server to see recent creations.</div>';
+ }}
+async function track(id){current=id;clearTimeout(timer);$('statusCard').style.display='block';await poll(id)}
+async function poll(id){if(id!==current)return;let j;try{const r=await fetch('api/job/'+id);if(!r.ok)throw 0;j=await r.json()}catch(e){timer=setTimeout(()=>poll(id),5000);return}
+ $('bar').style.width=Math.round((j.progress||0)*100)+'%';
+ const st=j.scene_state||[];const sc=(j.scenes||[]).map(x=>x.split(' Request: ')[0]);
+ $('sceneList').innerHTML=sc.map((s,i)=>`<li><span class="s ${st[i]||''}">Scene ${i+1}<br>${st[i]==='done'?'✓ done'+(j.scene_times&&j.scene_times[i]?' · '+fmt(j.scene_times[i]):''):st[i]==='rendering'?'● filming':'waiting'}</span><span>${esc(s)}</span></li>`).join('');
+ $('actions').style.display='none';
+ const pl=j.plan;$('plan').innerHTML=pl?`${pl.scenes} scene${pl.scenes>1?'s':''} · ${pl.seconds_per_scene}s each · ${pl.aspect==='9:16'?'vertical':pl.aspect==='1:1'?'square':'landscape'} ${pl.size} · ${pl.continuous?'one continuous story':pl.transition==='cut'?'hard cuts':pl.transition==='black'?'dip to black':'crossfades'}${pl.style&&pl.style!=='as described'?' · '+esc(pl.style):''}`:'';
+ $('screen').style.aspectRatio=pl?(pl.aspect==='9:16'?'9/16':pl.aspect==='1:1'?'1/1':'16/9'):'16/9';
+ if(j.status==='queued'){$('status').textContent=j.ahead?`Waiting in queue · ${j.ahead} video${j.ahead>1?'s':''} ahead`:'Starting…';$('eta').textContent=j.plan?'ready in ≈ '+fmt(j.eta):''}
+ else if(j.status==='running'){$('status').textContent=j.message;$('eta').textContent=j.plan&&j.eta?'≈ '+fmt(j.eta)+' left':'estimating time…';
+   const last=(j.scene_videos||[]).slice(-1)[0];if(last&&!$('screen').querySelector('video[data-p="'+last+'"]'))$('screen').innerHTML=`<video data-p="${last}" src="file/${id}/${last}" autoplay loop muted playsinline></video>`;
+   else if(!last&&!$('screen').querySelector('.empty.f'))$('screen').innerHTML='<div class="empty f"><b>Filming…</b>You can close this page and come back later.</div>'}
+ else if(j.status==='done'){show(j.video);$('dl').href=j.video+'?download=1';$('open').href=j.video;$('actions').style.display='flex';$('status').textContent='Finished';$('eta').textContent=`rendered in ${fmt(j.seconds)} · ${j.size||''}`;$('bar').style.width='100%';
+   $('reuse').onclick=()=>{$('prompt').value=j.prompt;window.scrollTo({top:0,behavior:'smooth'})};refreshLists();return}
+ else {$('status').textContent='Something went wrong: '+j.message;$('eta').textContent='';return}
+ timer=setTimeout(()=>poll(id),4000)}
+$('go').onclick=async()=>{const prompt=$('prompt').value.trim();if(!prompt){$('prompt').focus();return}
+ $('go').disabled=true;const fd=new FormData();fd.append('prompt',prompt);
+ files.forEach(f=>fd.append('images',f));
+ try{const r=await fetch('api/generate',{method:'POST',body:fd});if(!r.ok){let m=await r.text();try{m=JSON.parse(m).detail}catch(e){};alert(m||'Could not start generation');return}
+  const {id}=await r.json();addMine(id);refreshLists();$('screen').innerHTML='<div class="empty f"><b>Queued</b>You can close this page and come back later.</div>';track(id)}
+ catch(e){alert('The FILMAI video server is not connected. Run the app from our-video-ai/ (see README), then open that local URL to generate videos.')}
+ finally{$('go').disabled=false}};
+refreshLists().then(()=>{const m=mine();if(m.length)track(m[0])});setInterval(refreshLists,30000);
+</script></body></html>
