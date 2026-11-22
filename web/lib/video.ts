@@ -91,8 +91,8 @@ export async function startGeneration(opts: {
     env: {
       ...process.env,
       HF_HOME: process.env.HF_HOME || path.join(ROOT, "hf"),
-      WAN_FRAMES: process.env.WAN_FRAMES || "33",
-      WAN_STEPS: process.env.WAN_STEPS || "20",
+      WAN_FRAMES: process.env.WAN_FRAMES || "17",
+      WAN_STEPS: process.env.WAN_STEPS || "8",
     },
   });
   const logPath = path.join(jobDir, "worker.log");
