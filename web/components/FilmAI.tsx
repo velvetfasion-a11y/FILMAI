@@ -164,14 +164,8 @@ export default function FilmAI() {
         }
         return;
       }
-      const { id, demo } = JSON.parse(raw) as { id: string; demo?: boolean };
-      if (demo) {
-        setBanner(
-          "DEMO — AI is off. This only saves a placeholder clip (solid color). Add your Replicate API token in Cursor Secrets, then confirm Publish, to generate real Wan 2.2 films from your prompt.",
-        );
-      } else {
-        setBanner(null);
-      }
+      const { id } = JSON.parse(raw) as { id: string };
+      setBanner("Generating with Wan-AI/Wan2.1-T2V-1.3B-Diffusers (first run downloads the model).");
       addMine(id);
       refreshLists();
       track(id);
@@ -193,7 +187,7 @@ export default function FilmAI() {
         <div className="logo">
           Film<span>AI</span>
         </div>
-        <div className="tag">Text & image to video · Wan 2.2</div>
+        <div className="tag">Text to video · Wan2.1-T2V-1.3B</div>
       </header>
       {banner && <div className="banner">{banner}</div>}
       <main className="main">
@@ -262,8 +256,7 @@ export default function FilmAI() {
             {busy ? "Starting…" : "Generate video"}
           </button>
           <div className="note">
-            Without a Replicate API token the app stays in <b>demo mode</b> (placeholder video, not AI). Add the token in Cursor
-            Secrets, publish <code>web/</code>, then generate again.
+            Uses open-weights <b>Wan2.1-T2V-1.3B</b> from Hugging Face. First generate downloads the model; CPU renders are slow.
           </div>
         </section>
 
@@ -289,18 +282,14 @@ export default function FilmAI() {
               <div className="status">
                 <div>
                   {job.status === "done"
-                    ? job.demo
-                      ? "Demo placeholder (not AI)"
-                      : "Finished"
+                    ? "Finished"
                     : job.status === "error"
                       ? `Something went wrong: ${job.message}`
                       : job.message || "Working…"}
                 </div>
                 <small>
                   {job.status === "done"
-                    ? job.demo
-                      ? "Add Replicate token for real films"
-                      : job.size || ""
+                    ? job.size || "Wan2.1 1.3B"
                     : job.eta
                       ? `≈ ${fmt(job.eta)} left`
                       : ""}
@@ -388,8 +377,11 @@ export default function FilmAI() {
         </section>
       </main>
       <footer>
-        Video model: Wan 2.2 Fast via Replicate · hosted FILMAI app. Local open-weights pipeline remains in{" "}
-        <code>our-video-ai/</code>.
+        Video model:{" "}
+        <a href="https://huggingface.co/Wan-AI/Wan2.1-T2V-1.3B-Diffusers" target="_blank" rel="noreferrer">
+          Wan-AI/Wan2.1-T2V-1.3B-Diffusers
+        </a>{" "}
+        · open weights via Hugging Face Diffusers.
       </footer>
       <style jsx>{`
         .hdr {

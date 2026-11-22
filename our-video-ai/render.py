@@ -8,7 +8,8 @@ import torch
 torch.set_num_threads(int(os.environ.get("THREADS", str(os.cpu_count() or 8))))
 DEVICE = os.environ.get("DEVICE") or ("cuda" if torch.cuda.is_available() else "cpu")  # a GPU makes this ~50-100x faster
 
-WAN = "FastVideo/FastWan2.2-TI2V-5B-FullAttn-Diffusers"
+WAN = os.environ.get("WAN_MODEL", "FastVideo/FastWan2.2-TI2V-5B-FullAttn-Diffusers")
+# FilmAI web app uses Wan-AI/Wan2.1-T2V-1.3B-Diffusers via web/python/generate_wan13.py
 LLM = "Qwen/Qwen2.5-3B-Instruct"
 SIZES = {  # (quality, aspect) -> (H, W)   all multiples of 32
     ("hd", "16:9"): (704, 1280), ("hd", "9:16"): (1280, 704), ("hd", "1:1"): (960, 960),

@@ -43,17 +43,14 @@ export async function POST(request: Request) {
   const id = newId();
 
   let predictionId: string;
-  let mock: boolean;
   try {
-    ({ predictionId, mock } = await startGeneration({ prompt, aspect, imageDataUrl }));
+    ({ predictionId } = await startGeneration({ prompt, aspect, imageDataUrl }));
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Could not start generation";
     return jsonCors(request, { detail: msg }, 502);
   }
 
-  const message = mock
-    ? "Demo mode — sample render (add REPLICATE_API_TOKEN for real films)"
-    : "Queued on Wan 2.2";
+  const message = "Queued Wan2.1-T2V-1.3B (Hugging Face Diffusers)";
 
   await sql(
     `insert into jobs (id, owner, prompt, status, progress, message, prediction_id, aspect)
@@ -61,7 +58,7 @@ export async function POST(request: Request) {
     [id, owner, prompt, "running", 0.05, message, predictionId, aspect],
   );
 
-  const res = jsonCors(request, { id, demo: mock });
+  const res = jsonCors(request, { id, demo: false, model: "Wan-AI/Wan2.1-T2V-1.3B-Diffusers" });
   if (!request.headers.get("cookie")?.includes("filmai_guest=") && owner.startsWith("guest:")) {
     const headers = new Headers(res.headers);
     const secure = request.url.startsWith("https:");

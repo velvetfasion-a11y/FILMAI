@@ -74,15 +74,14 @@ export async function GET(
     if (ok) job.has_video = true;
   }
 
-  const demo = Boolean(job.prediction_id?.startsWith("mock_"));
-
   return jsonCors(request, {
     id: job.id,
     prompt: job.prompt,
     status: job.status,
     progress: job.progress,
     message: job.message,
-    demo,
+    demo: false,
+    model: "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
     video: job.status === "done" ? `api/video/${job.id}` : null,
     video_url: job.status === "done" ? `/api/video/${job.id}` : null,
     has_video: Boolean(job.has_video),

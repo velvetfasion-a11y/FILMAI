@@ -33,23 +33,22 @@ export async function getVideoBytes(
   return { bytes, contentType: row.content_type || "video/mp4" };
 }
 
-/** Download a remote MP4 (or use the bundled demo) and persist it in Postgres. */
+/** Ingest an MP4 from a local file:, remote URL, or bundled demo into Postgres. */
 export async function ingestVideo(jobId: string, sourceUrl?: string | null): Promise<boolean> {
   try {
     let bytes: Buffer;
-    if (!sourceUrl || sourceUrl.startsWith("demo:")) {
+    if (sourceUrl?.startsWith("file:")) {
+      bytes = await readFile(sourceUrl.slice("file:".length));
+    } else if (!sourceUrl || sourceUrl.startsWith("demo:")) {
       const demoPath = path.join(process.cwd(), "storage", "demo-sample.mp4");
       bytes = await readFile(demoPath);
-    } else {
+    } else if (sourceUrl.startsWith("http://") || sourceUrl.startsWith("https://")) {
       const res = await fetch(sourceUrl);
-      if (!res.ok) {
-        // Fall back to bundled demo if remote sample is blocked (e.g. 403).
-        const demoPath = path.join(process.cwd(), "storage", "demo-sample.mp4");
-        bytes = await readFile(demoPath);
-      } else {
-        const ab = await res.arrayBuffer();
-        bytes = Buffer.from(ab);
-      }
+      if (!res.ok) throw new Error(`Download failed: ${res.status}`);
+      bytes = Buffer.from(await res.arrayBuffer());
+    } else {
+      // Treat as filesystem path
+      bytes = await readFile(sourceUrl);
     }
     await saveVideoBytes(jobId, bytes, "video/mp4");
     await sql(`update jobs set video_url = $2 where id = $1`, [jobId, `stored:${jobId}`]);

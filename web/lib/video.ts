@@ -1,4 +1,7 @@
-import Replicate from "replicate";
+import { accessSync, constants as fsConstants } from "node:fs";
+import { spawn } from "node:child_process";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
 
 export type Aspect = "16:9" | "9:16" | "1:1";
 
@@ -11,46 +14,115 @@ export function detectAspect(prompt: string): Aspect {
   return "16:9";
 }
 
-/** Bundled demo clip stored in Postgres when REPLICATE_API_TOKEN is unset. */
-export const DEMO_SOURCE = "demo:local";
+const ROOT = process.cwd();
+const JOBS = path.join(ROOT, "python", "jobs");
+const SCRIPT = path.join(ROOT, "python", "generate_wan13.py");
 
-function client() {
-  const token = process.env.REPLICATE_API_TOKEN?.trim();
-  if (!token) return null;
-  return new Replicate({ auth: token });
+function pythonBin() {
+  const candidates = [
+    process.env.WAN_PYTHON,
+    path.join(ROOT, "..", "our-video-ai", ".venv", "bin", "python"),
+    path.join(ROOT, ".venv", "bin", "python"),
+    "python3",
+  ].filter(Boolean) as string[];
+  for (const c of candidates) {
+    try {
+      if (c === "python3") return c;
+      accessSync(c, fsConstants.X_OK);
+      return c;
+    } catch {
+      /* try next */
+    }
+  }
+  return "python3";
 }
 
-export function hasReplicate() {
-  return Boolean(process.env.REPLICATE_API_TOKEN?.trim());
+type StatusFile = {
+  status?: string;
+  progress?: number;
+  message?: string;
+  video?: string;
+  error?: string;
+  size?: string;
+};
+
+async function readStatus(jobDir: string): Promise<StatusFile> {
+  try {
+    return JSON.parse(await readFile(path.join(jobDir, "status.json"), "utf8")) as StatusFile;
+  } catch {
+    return { status: "starting", progress: 0.02, message: "Starting Wan2.1…" };
+  }
 }
 
+/** Start local Wan-AI/Wan2.1-T2V-1.3B-Diffusers generation. */
 export async function startGeneration(opts: {
   prompt: string;
   aspect: Aspect;
   imageDataUrl?: string | null;
 }): Promise<{ predictionId: string; mock: boolean }> {
-  const rep = client();
-  if (!rep) {
-    return { predictionId: `mock_${Date.now()}`, mock: true };
-  }
+  const id = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
+  const jobDir = path.join(JOBS, id);
+  await mkdir(jobDir, { recursive: true });
+  await writeFile(
+    path.join(jobDir, "status.json"),
+    JSON.stringify({
+      status: "starting",
+      progress: 0.02,
+      message: "Queued Wan2.1-T2V-1.3B…",
+      prompt: opts.prompt,
+      model: "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+    }),
+  );
 
-  const model = opts.imageDataUrl
-    ? "wan-video/wan-2.2-i2v-fast"
-    : "wan-video/wan-2.2-t2v-fast";
-
-  const input: Record<string, unknown> = {
-    prompt: opts.prompt.slice(0, 1500),
-    aspect_ratio: opts.aspect === "1:1" ? "16:9" : opts.aspect,
-    resolution: "720p",
-    go_fast: true,
-  };
-  if (opts.imageDataUrl) input.image = opts.imageDataUrl;
-
-  const prediction = await rep.predictions.create({
-    model,
-    input,
+  const py = pythonBin();
+  const args = [
+    SCRIPT,
+    "--job-dir",
+    jobDir,
+    "--prompt",
+    opts.prompt.slice(0, 1500),
+    "--aspect",
+    opts.aspect,
+  ];
+  const child = spawn(/*turbopackIgnore: true*/ py, args, {
+    cwd: ROOT,
+    detached: true,
+    stdio: ["ignore", "pipe", "pipe"],
+    env: {
+      ...process.env,
+      HF_HOME: process.env.HF_HOME || path.join(ROOT, "hf"),
+      WAN_FRAMES: process.env.WAN_FRAMES || "33",
+      WAN_STEPS: process.env.WAN_STEPS || "20",
+    },
   });
-  return { predictionId: prediction.id, mock: false };
+  const logPath = path.join(jobDir, "worker.log");
+  const logChunks: Buffer[] = [];
+  child.stdout?.on("data", (d: Buffer) => logChunks.push(d));
+  child.stderr?.on("data", (d: Buffer) => logChunks.push(d));
+  child.on("exit", async (code) => {
+    try {
+      await writeFile(logPath, Buffer.concat(logChunks));
+      if (code && code !== 0) {
+        const st = await readStatus(jobDir);
+        if (st.status !== "succeeded" && st.status !== "failed") {
+          await writeFile(
+            path.join(jobDir, "status.json"),
+            JSON.stringify({
+              ...st,
+              status: "failed",
+              progress: 0,
+              message: `Worker exited with code ${code}`,
+            }),
+          );
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+  });
+  child.unref();
+
+  return { predictionId: `wan13_${id}`, mock: false };
 }
 
 export async function pollGeneration(predictionId: string): Promise<{
@@ -59,57 +131,53 @@ export async function pollGeneration(predictionId: string): Promise<{
   message: string;
   videoUrl?: string;
   error?: string;
+  size?: string;
 }> {
-  if (predictionId.startsWith("mock_")) {
-    const started = Number(predictionId.slice(5));
-    const elapsed = Date.now() - started;
-    if (elapsed < 2500) {
-      return { status: "processing", progress: 0.35, message: "Sample render: planning shots…" };
-    }
-    if (elapsed < 5000) {
-      return { status: "processing", progress: 0.7, message: "Sample render: filming (demo mode)…" };
-    }
+  if (!predictionId.startsWith("wan13_")) {
     return {
-      status: "succeeded",
-      progress: 1,
-      message: "Done (sample video — add REPLICATE_API_TOKEN for real Wan 2.2 films)",
-      videoUrl: DEMO_SOURCE,
+      status: "failed",
+      progress: 0,
+      message: "Unknown generation backend",
+      error: "expected wan13_ job",
     };
   }
-
-  const rep = client();
-  if (!rep) {
-    return { status: "failed", progress: 0, message: "Missing API token", error: "REPLICATE_API_TOKEN not set" };
-  }
-
-  const prediction = await rep.predictions.get(predictionId);
-  const status = prediction.status as "starting" | "processing" | "succeeded" | "failed" | "canceled";
-
+  const id = predictionId.slice("wan13_".length);
+  const jobDir = path.join(JOBS, id);
+  const st = await readStatus(jobDir);
+  const status = (st.status || "starting") as
+    | "starting"
+    | "processing"
+    | "succeeded"
+    | "failed"
+    | "canceled";
+  const out = path.join(jobDir, "output.mp4");
   if (status === "succeeded") {
-    const out = prediction.output;
-    const videoUrl = Array.isArray(out) ? String(out[0]) : String(out ?? "");
-    return { status, progress: 1, message: "Done", videoUrl };
+    return {
+      status,
+      progress: 1,
+      message: st.message || "Done — Wan2.1-T2V-1.3B",
+      videoUrl: `file:${out}`,
+      size: st.size,
+    };
   }
   if (status === "failed" || status === "canceled") {
     return {
       status,
       progress: 0,
-      message: prediction.error ? String(prediction.error) : "Generation failed",
-      error: prediction.error ? String(prediction.error) : status,
+      message: st.message || "Generation failed",
+      error: st.error || st.message,
     };
   }
-
-  const progress = status === "starting" ? 0.08 : 0.45;
   return {
-    status,
-    progress,
-    message: status === "starting" ? "Starting Wan 2.2…" : "Filming your video…",
+    status: status === "starting" ? "starting" : "processing",
+    progress: st.progress ?? 0.1,
+    message: st.message || "Filming with Wan2.1 1.3B…",
   };
 }
 
 export async function fileToDataUrl(file: File): Promise<string> {
   const buf = Buffer.from(await file.arrayBuffer());
-  if (buf.length > 8_000_000) throw new Error("Image too large (max 8 MB for cloud generate)");
+  if (buf.length > 8_000_000) throw new Error("Image too large (max 8 MB)");
   const mime = file.type || "image/jpeg";
   return `data:${mime};base64,${buf.toString("base64")}`;
 }
