@@ -40,7 +40,7 @@ export async function GET(request: Request) {
       prompt: j.prompt,
       status: j.status,
       progress: j.progress,
-      video: j.status === "done" ? `video/${j.id}` : null,
+      video: j.status === "done" ? `api/video/${j.id}` : null,
       created: j.created_at,
     })),
   );

@@ -1,5 +1,6 @@
 import { jsonCors, viewerId, withCors } from "../../../../lib/auth";
 import { sql, type JobRow } from "../../../../lib/db";
+import { ingestVideo } from "../../../../lib/store";
 import { pollGeneration } from "../../../../lib/video";
 
 export const runtime = "nodejs";
@@ -29,14 +30,21 @@ export async function GET(
     try {
       const polled = await pollGeneration(job.prediction_id);
       if (polled.status === "succeeded" && polled.videoUrl) {
+        const ok = await ingestVideo(id, polled.videoUrl);
         await sql(
-          `update jobs set status = 'done', progress = 1, message = $2, video_url = $3, updated_at = now() where id = $1`,
-          [id, polled.message, polled.videoUrl],
+          `update jobs set status = $2, progress = 1, message = $3, video_url = $4, updated_at = now() where id = $1`,
+          [
+            id,
+            ok ? "done" : "error",
+            ok ? polled.message : "Finished but could not save video to storage",
+            ok ? `stored:${id}` : null,
+          ],
         );
-        job.status = "done";
-        job.progress = 1;
-        job.message = polled.message;
-        job.video_url = polled.videoUrl;
+        job.status = ok ? "done" : "error";
+        job.progress = ok ? 1 : 0;
+        job.message = ok ? polled.message : "Finished but could not save video to storage";
+        job.video_url = ok ? `stored:${id}` : null;
+        job.has_video = ok;
       } else if (polled.status === "failed" || polled.status === "canceled") {
         await sql(
           `update jobs set status = 'error', progress = 0, message = $2, updated_at = now() where id = $1`,
@@ -60,14 +68,21 @@ export async function GET(
     }
   }
 
+  // Backfill: done job without blob yet (legacy rows).
+  if (job.status === "done" && !job.has_video) {
+    const ok = await ingestVideo(id, job.video_url);
+    if (ok) job.has_video = true;
+  }
+
   return jsonCors(request, {
     id: job.id,
     prompt: job.prompt,
     status: job.status,
     progress: job.progress,
     message: job.message,
-    video: job.video_url ? `video/${job.id}` : null,
-    video_url: job.video_url,
+    video: job.status === "done" ? `api/video/${job.id}` : null,
+    video_url: job.status === "done" ? `/api/video/${job.id}` : null,
+    has_video: Boolean(job.has_video),
     plan: {
       scenes: 1,
       seconds_per_scene: 5,

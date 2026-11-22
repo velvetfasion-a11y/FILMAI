@@ -175,10 +175,7 @@ export default function FilmAI() {
     }
   }
 
-  const resolvedVideo =
-    job?.status === "done"
-      ? job.video_url || (job.video?.startsWith("http") ? job.video : `/api/video/${job.id}`)
-      : null;
+  const resolvedVideo = job?.status === "done" && job.id ? `/api/video/${job.id}` : null;
 
   const aspect =
     job?.plan?.aspect === "9:16" ? "9/16" : job?.plan?.aspect === "1:1" ? "1/1" : "16/9";

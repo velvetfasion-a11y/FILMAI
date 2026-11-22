@@ -11,12 +11,8 @@ export function detectAspect(prompt: string): Aspect {
   return "16:9";
 }
 
-/** Sample clip used when REPLICATE_API_TOKEN is not set (local / preview). */
-export const SAMPLE_VIDEO =
-  "https://replicate.delivery/xezq/placeholder-filmai-sample.mp4";
-
-const SAMPLE_FALLBACK =
-  "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4";
+/** Bundled demo clip stored in Postgres when REPLICATE_API_TOKEN is unset. */
+export const DEMO_SOURCE = "demo:local";
 
 function client() {
   const token = process.env.REPLICATE_API_TOKEN?.trim();
@@ -77,7 +73,7 @@ export async function pollGeneration(predictionId: string): Promise<{
       status: "succeeded",
       progress: 1,
       message: "Done (sample video — add REPLICATE_API_TOKEN for real Wan 2.2 films)",
-      videoUrl: SAMPLE_FALLBACK,
+      videoUrl: DEMO_SOURCE,
     };
   }
 
