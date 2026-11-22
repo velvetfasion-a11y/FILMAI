@@ -150,18 +150,29 @@ export default function FilmAI() {
     try {
       const r = await fetch("api/generate", { method: "POST", body: fd });
       const raw = await r.text();
-      let detail = raw;
-      try {
-        detail = JSON.parse(raw).detail || raw;
-      } catch {
-        /* keep */
+      const looksHtml = /^\s*</.test(raw) || /<!DOCTYPE|<html/i.test(raw);
+      let detail = "";
+      if (!looksHtml) {
+        try {
+          detail = String(JSON.parse(raw).detail || "");
+        } catch {
+          detail = raw.slice(0, 200);
+        }
       }
       if (!r.ok) {
         if (r.status === 401) {
           alert("Sign in is required to generate films on the hosted FILMAI app.");
+        } else if (looksHtml || r.status >= 502) {
+          alert(
+            "The preview tunnel glitched (Cloudflare returned an error page). Refresh this page and try Generate again in a moment.",
+          );
         } else {
-          alert(typeof detail === "string" ? detail.slice(0, 300) : "Could not start generation");
+          alert(detail || "Could not start generation");
         }
+        return;
+      }
+      if (looksHtml) {
+        alert("The preview tunnel returned an error page instead of starting your film. Refresh and try again.");
         return;
       }
       const { id } = JSON.parse(raw) as { id: string };
@@ -170,7 +181,7 @@ export default function FilmAI() {
       refreshLists();
       track(id);
     } catch {
-      alert("Could not reach the FILMAI generation server.");
+      alert("Could not reach the FILMAI generation server. Refresh the page and try again.");
     } finally {
       setBusy(false);
     }
