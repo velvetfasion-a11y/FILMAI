@@ -8,6 +8,7 @@ type Job = {
   status: string;
   progress: number;
   message?: string;
+  demo?: boolean;
   video?: string | null;
   video_url?: string | null;
   plan?: {
@@ -164,7 +165,13 @@ export default function FilmAI() {
         return;
       }
       const { id, demo } = JSON.parse(raw) as { id: string; demo?: boolean };
-      if (demo) setBanner("Demo mode: showing a sample clip. Add a Replicate API token in Cursor Secrets for real Wan 2.2 films.");
+      if (demo) {
+        setBanner(
+          "DEMO — AI is off. This only saves a placeholder clip (solid color). Add your Replicate API token in Cursor Secrets, then confirm Publish, to generate real Wan 2.2 films from your prompt.",
+        );
+      } else {
+        setBanner(null);
+      }
       addMine(id);
       refreshLists();
       track(id);
@@ -254,7 +261,10 @@ export default function FilmAI() {
           <button className="go" disabled={busy} onClick={onGenerate}>
             {busy ? "Starting…" : "Generate video"}
           </button>
-          <div className="note">Finished videos appear under “My videos”. Real films need a Replicate API token in Cursor Secrets.</div>
+          <div className="note">
+            Without a Replicate API token the app stays in <b>demo mode</b> (placeholder video, not AI). Add the token in Cursor
+            Secrets, publish <code>web/</code>, then generate again.
+          </div>
         </section>
 
         <section className="stage">
@@ -279,14 +289,18 @@ export default function FilmAI() {
               <div className="status">
                 <div>
                   {job.status === "done"
-                    ? "Finished"
+                    ? job.demo
+                      ? "Demo placeholder (not AI)"
+                      : "Finished"
                     : job.status === "error"
                       ? `Something went wrong: ${job.message}`
                       : job.message || "Working…"}
                 </div>
                 <small>
                   {job.status === "done"
-                    ? job.size || ""
+                    ? job.demo
+                      ? "Add Replicate token for real films"
+                      : job.size || ""
                     : job.eta
                       ? `≈ ${fmt(job.eta)} left`
                       : ""}
