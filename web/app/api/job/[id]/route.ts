@@ -1,26 +1,28 @@
-import { requireIdentity } from "../../../../cursor/identity";
+import { jsonCors, viewerId, withCors } from "../../../../lib/auth";
 import { sql, type JobRow } from "../../../../lib/db";
 import { pollGeneration } from "../../../../lib/video";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+export async function OPTIONS(request: Request) {
+  return withCors(request, null, { status: 204 });
+}
+
 export async function GET(
   request: Request,
   ctx: { params: Promise<{ id: string }> },
 ) {
-  const identity = await requireIdentity(request);
-  if (identity instanceof Response) return identity;
-
+  const owner = await viewerId(request);
   const { id } = await ctx.params;
-  if (!/^[0-9a-f]{10}$/i.test(id) && !/^[0-9a-z]{10}$/i.test(id)) {
-    return Response.json({ detail: "Not found" }, { status: 404 });
+  if (!/^[0-9a-z]{10}$/i.test(id)) {
+    return jsonCors(request, { detail: "Not found" }, 404);
   }
 
   const { rows } = await sql<JobRow>(`select * from jobs where id = $1 limit 1`, [id]);
   const job = rows[0];
-  if (!job || job.owner !== identity.sub) {
-    return Response.json({ detail: "Not found" }, { status: 404 });
+  if (!job || job.owner !== owner) {
+    return jsonCors(request, { detail: "Not found" }, 404);
   }
 
   if (job.status === "running" && job.prediction_id) {
@@ -58,7 +60,7 @@ export async function GET(
     }
   }
 
-  return Response.json({
+  return jsonCors(request, {
     id: job.id,
     prompt: job.prompt,
     status: job.status,
@@ -78,7 +80,6 @@ export async function GET(
     scene_state: job.status === "done" ? ["done"] : job.status === "running" ? ["rendering"] : ["waiting"],
     scenes: [job.prompt],
     created: job.created_at,
-    seconds: undefined,
     size: job.aspect === "9:16" ? "720x1280" : "1280x720",
     ahead: 0,
     eta: job.status === "running" ? 45 : 0,
