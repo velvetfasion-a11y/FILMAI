@@ -267,12 +267,13 @@ export default function FilmAI() {
             ) : job?.status === "running" ? (
               <div className="empty">
                 <b>Filming…</b>
-                {job.message || "Wan 2.2 is rendering your clip."}
+                {job.message || "Wan2.1 1.3B is rendering your clip."}
+                {typeof job.eta === "number" && job.eta > 0 ? ` ≈ ${fmt(job.eta)} left.` : ""}
               </div>
             ) : (
               <div className="empty">
                 <b>Your video appears here</b>
-                Each render takes about half a minute on Wan 2.2 Fast.
+                Wan2.1-T2V-1.3B runs locally — CPU renders take several minutes; the timer updates live.
               </div>
             )}
           </div>
