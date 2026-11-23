@@ -1,7 +1,7 @@
 import { jsonCors, viewerId, withCors } from "../../../../lib/auth";
 import { sql, type JobRow } from "../../../../lib/db";
 import { ingestVideo } from "../../../../lib/store";
-import { pollGeneration } from "../../../../lib/video";
+import { pollGeneration, wanSize, type Aspect } from "../../../../lib/video";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,9 +26,15 @@ export async function GET(
     return jsonCors(request, { detail: "Not found" }, 404);
   }
 
+  let eta = 0;
+  let renderSize = wanSize((job.aspect as Aspect) || "16:9");
+
   if (job.status === "running" && job.prediction_id) {
     try {
       const polled = await pollGeneration(job.prediction_id);
+      if (polled.size) renderSize = polled.size;
+      if (typeof polled.etaSeconds === "number") eta = polled.etaSeconds;
+
       if (polled.status === "succeeded" && polled.videoUrl) {
         const ok = await ingestVideo(id, polled.videoUrl);
         await sql(
@@ -45,6 +51,7 @@ export async function GET(
         job.message = ok ? polled.message : "Finished but could not save video to storage";
         job.video_url = ok ? `stored:${id}` : null;
         job.has_video = ok;
+        eta = 0;
       } else if (polled.status === "failed" || polled.status === "canceled") {
         await sql(
           `update jobs set status = 'error', progress = 0, message = $2, updated_at = now() where id = $1`,
@@ -53,6 +60,7 @@ export async function GET(
         job.status = "error";
         job.progress = 0;
         job.message = polled.message;
+        eta = 0;
       } else {
         await sql(
           `update jobs set progress = $2, message = $3, updated_at = now() where id = $1`,
@@ -87,9 +95,9 @@ export async function GET(
     has_video: Boolean(job.has_video),
     plan: {
       scenes: 1,
-      seconds_per_scene: 5,
+      seconds_per_scene: 1,
       aspect: job.aspect,
-      size: job.aspect === "9:16" ? "720x1280" : "1280x720",
+      size: renderSize,
       continuous: true,
       transition: "crossfade",
       style: "as described",
@@ -97,8 +105,8 @@ export async function GET(
     scene_state: job.status === "done" ? ["done"] : job.status === "running" ? ["rendering"] : ["waiting"],
     scenes: [job.prompt],
     created: job.created_at,
-    size: job.aspect === "9:16" ? "720x1280" : "1280x720",
+    size: renderSize,
     ahead: 0,
-    eta: job.status === "running" ? 45 : 0,
+    eta: job.status === "running" ? eta : 0,
   });
 }

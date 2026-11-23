@@ -44,6 +44,7 @@ export function corsHeaders(request: Request): HeadersInit {
   const allow =
     ALLOWED.has(origin) ||
     origin.endsWith(".github.io") ||
+    origin.endsWith(".trycloudflare.com") ||
     origin.includes("localhost") ||
     origin.includes("127.0.0.1")
       ? origin

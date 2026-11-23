@@ -77,7 +77,7 @@ export default function FilmAI() {
     return () => urls.forEach((u) => URL.revokeObjectURL(u));
   }, [files]);
 
-  const refreshLists = useCallback(async () => {
+  const refreshLists = useCallback(async (): Promise<GalleryItem[]> => {
     try {
       const m = mine();
       if (m.length) {
@@ -85,10 +85,13 @@ export default function FilmAI() {
         if (r.ok) setMineItems(await r.json());
       } else setMineItems([]);
       const g = await fetch("api/gallery");
-      if (g.ok) setGallery(await g.json());
+      const recent: GalleryItem[] = g.ok ? await g.json() : [];
+      if (g.ok) setGallery(recent);
       setBanner(null);
+      return recent;
     } catch {
-      setBanner("Could not reach the FILMAI server.");
+      setBanner("Could not reach the FILMAI server. Pull to refresh — the preview link can expire.");
+      return [];
     }
   }, []);
 
@@ -121,9 +124,15 @@ export default function FilmAI() {
   );
 
   useEffect(() => {
-    refreshLists().then(() => {
+    refreshLists().then((recent) => {
       const m = mine();
-      if (m.length) track(m[0]);
+      if (m.length) {
+        track(m[0]);
+        return;
+      }
+      // Safari / new visitors: open the latest finished film automatically.
+      const latest = recent.find((x) => x.status === "done" && x.video);
+      if (latest) track(latest.id);
     });
     const t = setInterval(refreshLists, 30000);
     return () => {
@@ -150,18 +159,29 @@ export default function FilmAI() {
     try {
       const r = await fetch("api/generate", { method: "POST", body: fd });
       const raw = await r.text();
-      let detail = raw;
-      try {
-        detail = JSON.parse(raw).detail || raw;
-      } catch {
-        /* keep */
+      const looksHtml = /^\s*</.test(raw) || /<!DOCTYPE|<html/i.test(raw);
+      let detail = "";
+      if (!looksHtml) {
+        try {
+          detail = String(JSON.parse(raw).detail || "");
+        } catch {
+          detail = raw.slice(0, 200);
+        }
       }
       if (!r.ok) {
         if (r.status === 401) {
           alert("Sign in is required to generate films on the hosted FILMAI app.");
+        } else if (looksHtml || r.status >= 502) {
+          alert(
+            "The preview tunnel glitched (Cloudflare returned an error page). Refresh this page and try Generate again in a moment.",
+          );
         } else {
-          alert(typeof detail === "string" ? detail.slice(0, 300) : "Could not start generation");
+          alert(detail || "Could not start generation");
         }
+        return;
+      }
+      if (looksHtml) {
+        alert("The preview tunnel returned an error page instead of starting your film. Refresh and try again.");
         return;
       }
       const { id } = JSON.parse(raw) as { id: string };
@@ -170,7 +190,7 @@ export default function FilmAI() {
       refreshLists();
       track(id);
     } catch {
-      alert("Could not reach the FILMAI generation server.");
+      alert("Could not reach the FILMAI generation server. Refresh the page and try again.");
     } finally {
       setBusy(false);
     }
@@ -263,16 +283,26 @@ export default function FilmAI() {
         <section className="stage">
           <div className="screen" style={{ aspectRatio: aspect }}>
             {resolvedVideo ? (
-              <video src={resolvedVideo} controls autoPlay loop playsInline />
+              <video
+                key={resolvedVideo}
+                src={resolvedVideo}
+                controls
+                autoPlay
+                loop
+                playsInline
+                muted
+                preload="auto"
+              />
             ) : job?.status === "running" ? (
               <div className="empty">
                 <b>Filming…</b>
-                {job.message || "Wan 2.2 is rendering your clip."}
+                {job.message || "Wan2.1 1.3B is rendering your clip."}
+                {typeof job.eta === "number" && job.eta > 0 ? ` ≈ ${fmt(job.eta)} left.` : ""}
               </div>
             ) : (
               <div className="empty">
                 <b>Your video appears here</b>
-                Each render takes about half a minute on Wan 2.2 Fast.
+                Wan2.1-T2V-1.3B runs locally — CPU renders take several minutes; the timer updates live.
               </div>
             )}
           </div>
@@ -664,6 +694,7 @@ export default function FilmAI() {
           aspect-ratio: 16/9;
           object-fit: cover;
           background: #1b1617;
+          pointer-events: none;
         }
         .ph {
           aspect-ratio: 16/9;
